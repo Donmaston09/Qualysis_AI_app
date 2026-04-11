@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: qualysis
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # You'll paste this in the Render dashboard
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /

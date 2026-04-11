@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qualysis — Qualitative Research Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --ink: #1a1814;
+      --ink2: #4a4640;
+      --ink3: #8a8480;
+      --paper: #faf8f4;
+      --surface: #f3f0ea;
+      --border: rgba(26, 24, 20, 0.1);
+      --border2: rgba(26, 24, 20, 0.06);
+      --accent: #c4500a;
+      --accent2: #2d6a4f;
+      --gold: #b8860b;
+      --serif: 'DM Serif Display', Georgia, serif;
+      --sans: 'Outfit', sans-serif;
+      --mono: 'DM Mono', monospace;
+      --r: 10px;
+      --rs: 6px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: var(--sans);
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: 57px 1fr;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--paper);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-family: var(--serif);
+      font-size: 1.4rem;
+      letter-spacing: -0.02em;
+    }
+
+    .logo span {
+      color: var(--accent);
+      font-style: italic;
+    }
+
+    .tagline {
+      font-size: 0.7rem;
+      color: var(--ink3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 1px;
+    }
+
+    .hdr-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+    }
+
+    .dot-label {
+      font-size: 0.72rem;
+      color: var(--ink3);
+    }
+
+    /* ── Workspace ── */
+    .workspace {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+      background: var(--paper);
+    }
+
+    .panel-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      margin-bottom: 0.45rem;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .field-group label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--ink2);
+    }
+
+    textarea,
+    input[type="text"],
+    select {
+      width: 100%;
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      color: var(--ink);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--rs);
+      padding: 0.6rem 0.75rem;
+      outline: none;
+      transition: border-color 0.15s;
+      resize: vertical;
+    }
+
+    textarea:focus,
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    textarea {
+      line-height: 1.5;
+    }
+
+    .data-textarea {
+      min-height: 160px;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+    }
+
+    .hypothesis-input {
+      font-family: var(--serif);
+      font-size: 0.9rem;
+      font-style: italic;
+      min-height: 58px;
+      resize: vertical;
+    }
+
+    /* Input mode toggle */
+    .input-toggle {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--rs);
+      overflow: hidden;
+    }
+
+    .toggle-btn {
+      flex: 1;
+      padding: 0.45rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: transparent;
+      border: none;
+      color: var(--ink3);
+      cursor: pointer;
+      font-family: var(--sans);
+      transition: all 0.12s;
+    }
+
+    .toggle-btn.active {
+      background: var(--ink);
+      color: var(--paper);
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--r);
+      padding: 1.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: #fdf5f0;
+    }
+
+    .drop-zone-icon {
+      font-size: 1.6rem;
+      opacity: 0.4;
+      line-height: 1;
+    }
+
+    .drop-zone-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--ink2);
+    }
+
+    .drop-zone-sub {
+      font-size: 0.72rem;
+      color: var(--ink3);
+    }
+
+    .drop-zone input[type="file"] {
+      display: none;
+    }
+
+    .file-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.6rem 0.75rem;
+      background: #e8f5e9;
+      border: 1px solid rgba(45, 106, 79, 0.2);
+      border-radius: var(--rs);
+      font-size: 0.78rem;
+      color: #2d6a4f;
+    }
+
+    .file-badge-name {
+      font-weight: 500;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-badge-remove {
+      cursor: pointer;
+      opacity: 0.6;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .file-badge-remove:hover {
+      opacity: 1;
+    }
+
+    .file-meta {
+      font-size: 0.7rem;
+      color: var(--ink3);
+      margin-top: 4px;
+    }
+
+    .upload-progress {
+      height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .upload-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width 0.3s;
+      width: 0;
+    }
+
+    /* Chips */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .chip {
+      font-size: 0.68rem;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: 99px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      color: var(--ink2);
+      background: var(--surface);
+      transition: all 0.12s;
+      user-select: none;
+    }
+
+    .chip.active {
+      background: var(--ink);
+      color: var(--paper);
+      border-color: var(--ink);
+    }
+
+    .chip:hover:not(.active) {
+      border-color: var(--ink2);
+    }
+
+    /* Buttons */
+    .run-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: var(--ink);
+      color: var(--paper);
+      border: none;
+      border-radius: var(--r);
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .run-btn:hover:not(:disabled) {
+      opacity: 0.88;
+    }
+
+    .run-btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .run-btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
+    .example-btn {
+      width: 100%;
+      padding: 0.5rem;
+      background: transparent;
+      color: var(--ink3);
+      border: 1px dashed var(--border);
+      border-radius: var(--rs);
+      font-family: var(--sans);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .example-btn:hover {
+      background: var(--surface);
+      color: var(--ink2);
+      border-style: solid;
+    }
+
+    /* ── Main area ── */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--paper);
+      padding: 0 1.25rem;
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+
+    .tab {
+      padding: 0.75rem 1rem;
+      font-size: 0.77rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--ink3);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.12s;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      color: var(--ink);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab:hover:not(.active) {
+      color: var(--ink2);
+    }
+
+    .output-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+
+    /* States */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 0.75rem;
+      color: var(--ink3);
+    }
+
+    .empty-icon {
+      font-size: 2.5rem;
+      opacity: 0.25;
+    }
+
+    .empty-title {
+      font-family: var(--serif);
+      font-size: 1.25rem;
+      color: var(--ink2);
+      font-style: italic;
+    }
+
+    .empty-sub {
+      font-size: 0.78rem;
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+    }
+
+    .spinner {
+      width: 30px;
+      height: 30px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-msg {
+      font-size: 0.8rem;
+      color: var(--ink3);
+      font-style: italic;
+    }
+
+    .error-banner {
+      background: #fce8e8;
+      border: 1px solid rgba(192, 57, 43, 0.2);
+      border-radius: var(--r);
+      padding: 1rem 1.25rem;
+      color: #8b1a1a;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Result components ── */
+    .results-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .result-card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .result-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .rch-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: var(--rs);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .rch-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .result-card-body {
+      padding: 1rem;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: var(--ink2);
+    }
+
+    .verdict-banner {
+      border-radius: var(--r);
+      padding: 1.1rem 1.4rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .verdict-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 99px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .verdict-text {
+      font-family: var(--serif);
+      font-size: 1rem;
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    .verdict-supported {
+      background: #e8f5e9;
+    }
+
+    .verdict-supported .verdict-badge {
+      background: #2d6a4f;
+      color: #fff;
+    }
+
+    .verdict-partial {
+      background: #fff8e1;
+    }
+
+    .verdict-partial .verdict-badge {
+      background: #b8860b;
+      color: #fff;
+    }
+
+    .verdict-refuted {
+      background: #fce8e8;
+    }
+
+    .verdict-refuted .verdict-badge {
+      background: #c0392b;
+      color: #fff;
+    }
+
+    .verdict-inconclusive {
+      background: #f0f0f0;
+    }
+
+    .verdict-inconclusive .verdict-badge {
+      background: #555;
+      color: #fff;
+    }
+
+    .theme-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .theme-row:last-child {
+      border-bottom: none;
+    }
+
+    .theme-bar-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .theme-name {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    .theme-bar-bg {
+      background: var(--surface);
+      border-radius: 3px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .theme-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.8s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .theme-pct {
+      font-size: 0.72rem;
+      color: var(--ink3);
+      min-width: 34px;
+      text-align: right;
+      margin-top: 5px;
+    }
+
+    .sentiment-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .sent-card {
+      border-radius: var(--rs);
+      padding: 0.75rem 1rem;
+    }
+
+    .sent-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 4px;
+    }
+
+    .sent-pct {
+      font-size: 1.5rem;
+      font-family: var(--serif);
+    }
+
+    .sent-desc {
+      font-size: 0.72rem;
+      margin-top: 3px;
+      line-height: 1.5;
+    }
+
+    .sent-pos {
+      background: #e8f5e9;
+    }
+
+    .sent-pos .sent-label {
+      color: #2d6a4f;
+    }
+
+    .sent-pos .sent-pct {
+      color: #1a4a30;
+    }
+
+    .sent-neg {
+      background: #fce8e8;
+    }
+
+    .sent-neg .sent-label {
+      color: #c0392b;
+    }
+
+    .sent-neg .sent-pct {
+      color: #8b1a1a;
+    }
+
+    .sent-neu {
+      background: #f0f0f0;
+    }
+
+    .sent-neu .sent-label {
+      color: #555;
+    }
+
+    .sent-neu .sent-pct {
+      color: #333;
+    }
+
+    .sent-amb {
+      background: #fff8e1;
+    }
+
+    .sent-amb .sent-label {
+      color: #b8860b;
+    }
+
+    .sent-amb .sent-pct {
+      color: #7a5a00;
+    }
+
+    .quote-block {
+      border-left: 3px solid var(--border);
+      padding: 0.55rem 0.85rem;
+      margin: 0.45rem 0;
+      font-style: italic;
+      font-size: 0.79rem;
+      color: var(--ink2);
+      background: var(--surface);
+      border-radius: 0 var(--rs) var(--rs) 0;
+    }
+
+    .anomaly-item {
+      display: flex;
+      gap: 10px;
+      padding: 0.7rem;
+      border-radius: var(--rs);
+      background: #fff8e1;
+      border: 1px solid rgba(184, 134, 11, 0.2);
+      margin-bottom: 8px;
+    }
+
+    .anomaly-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    .anomaly-text {
+      font-size: 0.8rem;
+      color: var(--ink2);
+      line-height: 1.6;
+    }
+
+    .rec-item {
+      display: flex;
+      gap: 12px;
+      padding: 0.8rem;
+      border-radius: var(--rs);
+      border: 1px solid var(--border);
+      background: var(--paper);
+      margin-bottom: 8px;
+      align-items: flex-start;
+    }
+
+    .rec-num {
+      font-family: var(--serif);
+      font-size: 1.2rem;
+      color: var(--accent);
+      line-height: 1;
+      flex-shrink: 0;
+      font-style: italic;
+    }
+
+    .rec-title {
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 2px;
+      font-size: 0.82rem;
+    }
+
+    .rec-body {
+      font-size: 0.8rem;
+      color: var(--ink2);
+      line-height: 1.6;
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .meta-chip {
+      font-size: 0.7rem;
+      color: var(--ink3);
+      background: var(--surface);
+      padding: 3px 10px;
+      border-radius: 99px;
+      border: 1px solid var(--border2);
+    }
+
+    .section-title {
+      font-family: var(--serif);
+      font-size: 1rem;
+      color: var(--ink);
+      font-style: italic;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .theme-code-pill {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 500;
+      padding: 1px 7px;
+      border-radius: 99px;
+      margin: 1px;
+      background: var(--surface);
+      color: var(--ink3);
+      border: 1px solid var(--border);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @media (max-width: 768px) {
+      .workspace {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+
+      .sidebar {
+        max-height: 50vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <div class="logo">Qualysis<span>.</span></div>
+        <div class="tagline">Qualitative Research Engine</div>
+      </div>
+      <div class="hdr-right">
+        <div class="dot"></div>
+        <div class="dot-label">AI-powered</div>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <div class="sidebar">
+        <div>
+          <div class="panel-label">Dataset</div>
+          <div class="field-group">
+            <label>Data type</label>
+            <select id="data-type">
+              <option value="survey">Open-ended survey responses</option>
+              <option value="focus">Focus group transcript</option>
+              <option value="interview">Interview transcripts</option>
+              <option value="crm">CRM / categorical export</option>
+              <option value="reviews">Product / service reviews</option>
+              <option value="feedback">Employee feedback</option>
+              <option value="nps">NPS verbatims</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel-label">Input method</div>
+          <div class="input-toggle">
+            <button class="toggle-btn active" id="btn-paste" onclick="setInputMode('paste')">Paste text</button>
+            <button class="toggle-btn" id="btn-upload" onclick="setInputMode('upload')">Upload file</button>
+          </div>
+          <div id="paste-section" style="margin-top:0.6rem;">
+            <textarea class="data-textarea" id="data-input" placeholder="Paste responses..."></textarea>
+          </div>
+          <div id="upload-section" style="margin-top:0.6rem; display:none;">
+            <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+              ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+              <input type="file" id="file-input" accept=".txt,.csv,.xlsx,.xls,.pdf,.doc,.docx,.md"
+                onchange="handleFileSelect(event)" />
+              <div class="drop-zone-icon">⬆</div>
+              <div class="drop-zone-label">Drop file here or click to browse</div>
+            </div>
+            <div class="upload-progress" id="upload-progress" style="display:none;">
+              <div class="upload-bar" id="upload-bar"></div>
+            </div>
+            <div id="file-badge-area"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel-label">Research hypothesis</div>
+          <textarea class="hypothesis-input" id="hypothesis-input"
+            placeholder="e.g. Lack of career progression..."></textarea>
+        </div>
+
+        <div>
+          <div class="panel-label">Analysis focus</div>
+          <div class="chip-row" id="focus-chips">
+            <span class="chip active" data-val="themes">Themes</span>
+            <span class="chip active" data-val="sentiment">Sentiment</span>
+            <span class="chip active" data-val="hypothesis">Hypothesis</span>
+            <span class="chip active" data-val="anomalies">Anomalies</span>
+            <span class="chip active" data-val="recommendations">Recommendations</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel-label">Business context</div>
+          <input type="text" id="context-input" placeholder="e.g. Q3 employee review..." />
+        </div>
+
+        <button class="run-btn" id="run-btn" onclick="runAnalysis()">
+          <span id="run-label">Run analysis</span>
+        </button>
+        <button class="example-btn" onclick="loadExample()">Load example dataset</button>
+      </div>
+
+      <div class="main">
+        <div class="tab-bar">
+          <div class="tab active" data-tab="overview" onclick="switchTab('overview')">Overview</div>
+          <div class="tab" data-tab="themes" onclick="switchTab('themes')">Themes</div>
+          <div class="tab" data-tab="sentiment" onclick="switchTab('sentiment')">Sentiment</div>
+          <div class="tab" data-tab="hypothesis" onclick="switchTab('hypothesis')">Hypothesis</div>
+          <div class="tab" data-tab="anomalies" onclick="switchTab('anomalies')">Anomalies</div>
+          <div class="tab" data-tab="recommendations" onclick="switchTab('recommendations')">Recommendations</div>
+        </div>
+
+        <div class="output-area">
+          <div class="empty-state" id="empty-state">
+            <div class="empty-icon">◈</div>
+            <div class="empty-title">No analysis yet</div>
+            <div class="empty-sub">Paste your data or upload a file and run the engine.</div>
+          </div>
+          <div class="loading-state" id="loading-state" style="display:none;">
+            <div class="spinner"></div>
+            <div class="loading-msg" id="loading-msg">Analysing...</div>
+          </div>
+          <div id="error-banner" class="error-banner" style="display:none;"></div>
+          <div id="results-container" style="display:none;">
+            <div class="tab-content active" id="tab-overview"></div>
+            <div class="tab-content" id="tab-themes"></div>
+            <div class="tab-content" id="tab-sentiment"></div>
+            <div class="tab-content" id="tab-hypothesis"></div>
+            <div class="tab-content" id="tab-anomalies"></div>
+            <div class="tab-content" id="tab-recommendations"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let inputMode = 'paste';
+    let uploadedText = '';
+    let uploadedFilename = '';
+
+    const COLORS = ['#c4500a', '#2d6a4f', '#1a4a8a', '#8b1a8b', '#8b5a00', '#1a5a8b', '#6a2d2d'];
+
+    function setInputMode(mode) {
+      inputMode = mode;
+      document.getElementById('btn-paste').classList.toggle('active', mode === 'paste');
+      document.getElementById('btn-upload').classList.toggle('active', mode === 'upload');
+      document.getElementById('paste-section').style.display = mode === 'paste' ? '' : 'none';
+      document.getElementById('upload-section').style.display = mode === 'upload' ? '' : 'none';
+    }
+
+    function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+    function handleDragLeave(e) { document.getElementById('drop-zone').classList.remove('drag-over'); }
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) uploadFile(file);
+    }
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file) uploadFile(file);
+    }
+
+    async function uploadFile(file) {
+      const progressWrap = document.getElementById('upload-progress');
+      const bar = document.getElementById('upload-bar');
+      const badgeArea = document.getElementById('file-badge-area');
+      badgeArea.innerHTML = '';
+      progressWrap.style.display = 'block';
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+        uploadedText = data.text;
+        uploadedFilename = data.filename;
+        badgeArea.innerHTML = `<div class="file-badge" style="margin-top:8px;"><span class="file-badge-name">${data.filename}</span><span class="file-badge-remove" onclick="clearFile()">✕</span></div>`;
+      } catch (err) {
+        badgeArea.innerHTML = `<div style="color:#c0392b;font-size:0.78rem;margin-top:6px;">⚠ ${err.message}</div>`;
+      } finally {
+        progressWrap.style.display = 'none';
+      }
+    }
+
+    function clearFile() {
+      uploadedText = '';
+      document.getElementById('file-badge-area').innerHTML = '';
+      document.getElementById('file-input').value = '';
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+    }
+
+    document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => c.classList.toggle('active')));
+
+    async function runAnalysis() {
+      const data = inputMode === 'paste' ? document.getElementById('data-input').value.trim() : uploadedText.trim();
+      if (!data) return alert('No data provided');
+
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('results-container').style.display = 'none';
+      document.getElementById('loading-state').style.display = 'flex';
+      document.getElementById('error-banner').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/analyse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data,
+            hypothesis: document.getElementById('hypothesis-input').value.trim(),
+            context: document.getElementById('context-input').value.trim()
+          })
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Analysis failed');
+        renderResults(result);
+      } catch (err) {
+        document.getElementById('error-banner').textContent = '⚠ ' + err.message;
+        document.getElementById('error-banner').style.display = 'block';
+      } finally {
+        document.getElementById('loading-state').style.display = 'none';
+      }
+    }
+
+    function renderResults(r) {
+      document.getElementById('results-container').style.display = 'block';
+
+      // SAFE RECOVERY: Ensure core objects exist
+      const meta = r.meta || {};
+      const themes = Array.isArray(r.themes) ? r.themes : [];
+      const sentiment = r.sentiment || {};
+      const hyp = r.hypothesis || {};
+      const vc = meta.verdictClass || 'inconclusive';
+
+      // 1. Overview
+      document.getElementById('tab-overview').innerHTML = `
+      ${meta.hypothesis ? `
+        <div class="verdict-banner verdict-${vc}" style="margin-bottom:1.2rem;">
+          <span class="verdict-badge">${meta.verdictLabel || 'ANALYSIS'}</span>
+          <div>
+            <div class="verdict-text">"${meta.hypothesis}"</div>
+            <div style="font-size:0.72rem;color:var(--ink3);margin-top:5px;">Confidence: ${meta.confidenceLevel || 'N/A'}</div>
+          </div>
+        </div>` : ''}
+      <div class="meta-row">
+        <span class="meta-chip">${meta.responseCount ?? 0} responses</span>
+        <span class="meta-chip">${meta.dataType ?? 'qualitative'}</span>
+      </div>
+      <div class="result-card" style="margin-bottom:1.2rem;">
+        <div class="result-card-header"><div class="rch-title">The story the data tells</div></div>
+        <div class="result-card-body" style="font-family:var(--serif);font-size:0.95rem;font-style:italic;">${meta.storySummary || 'No summary available.'}</div>
+      </div>
+      <div class="section-title">Theme frequency</div>
+      ${themes.map((t, i) => `
+        <div class="theme-row">
+          <div class="theme-bar-wrap">
+            <div class="theme-name">${t.name || 'Theme'}</div>
+            <div class="theme-bar-bg"><div class="theme-bar-fill" style="width:${t.pct ?? 0}%;background:${COLORS[i % COLORS.length]};"></div></div>
+          </div>
+          <div class="theme-pct">${Math.round(t.pct ?? 0)}%</div>
+        </div>`).join('')}`;
+
+      // 2. Themes
+      document.getElementById('tab-themes').innerHTML = themes.map((t, i) => `
+      <div class="result-card" style="margin-bottom:1rem;">
+        <div class="result-card-header">
+          <div class="rch-title">${t.name || 'Theme'} <span style="font-weight:400;color:var(--ink3);margin-left:6px;">${Math.round(t.pct ?? 0)}%</span></div>
+        </div>
+        <div class="result-card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div style="background:var(--surface);padding:0.65rem;border-radius:var(--rs);">
+              <div style="font-size:0.65rem;font-weight:700;color:var(--ink3);">WHAT</div>
+              <div>${t.what || 'Insight provided.'}</div>
+            </div>
+            <div style="background:var(--surface);padding:0.65rem;border-radius:var(--rs);">
+              <div style="font-size:0.65rem;font-weight:700;color:var(--accent);">WHY</div>
+              <div>${t.why || 'Driver provided.'}</div>
+            </div>
+          </div>
+          ${t.evidence ? `<div class="quote-block">${t.evidence}</div>` : ''}
+        </div>
+      </div>`).join('');
+
+      // 3. Sentiment
+      document.getElementById('tab-sentiment').innerHTML = `
+      <div class="sentiment-grid">
+        <div class="sent-card sent-pos"><div class="sent-label">Positive</div><div class="sent-pct">${Math.round(sentiment.positive?.pct ?? 0)}%</div></div>
+        <div class="sent-card sent-neg"><div class="sent-label">Negative</div><div class="sent-pct">${Math.round(sentiment.negative?.pct ?? 0)}%</div></div>
+        <div class="sent-card sent-neu"><div class="sent-label">Neutral</div><div class="sent-pct">${Math.round(sentiment.neutral?.pct ?? 0)}%</div></div>
+        <div class="sent-card sent-amb"><div class="sent-label">Mixed</div><div class="sent-pct">${Math.round(sentiment.ambivalent?.pct ?? 0)}%</div></div>
+      </div>`;
+
+      // 4. Hypothesis
+      document.getElementById('tab-hypothesis').innerHTML = `
+      <div class="result-card">
+        <div class="result-card-body">
+          <div style="margin-bottom:1rem;"><strong>Verdict:</strong> ${hyp.verdict || 'No verdict available.'}</div>
+          <div style="font-size:0.85rem;color:var(--ink2);line-height:1.7;">${hyp.nuance || ''}</div>
+        </div>
+      </div>`;
+
+      // 5. Anomalies
+      document.getElementById('tab-anomalies').innerHTML = (r.anomalies || []).map(a => `
+      <div class="anomaly-item">
+        <div class="anomaly-text"><strong>${a.finding || 'Anomaly'}:</strong> ${a.significance || ''}</div>
+      </div>`).join('') || '<div style="text-align:center;padding:2rem;color:var(--ink3);">No significant anomalies found.</div>';
+
+      // 6. Recommendations
+      document.getElementById('tab-recommendations').innerHTML = (r.recommendations || []).map((rec, i) => `
+      <div class="rec-item">
+        <div class="rec-num">${i + 1}.</div>
+        <div class="rec-body"><div class="rec-title">${rec.title || 'Action'}</div><div>${rec.action || ''}</div></div>
+      </div>`).join('');
+
+      switchTab('overview');
+    }
+
+    function loadExample() {
+      setInputMode('paste');
+      document.getElementById('data-input').value = "I love the flexibility but I feel like I'm not growing.\nManagement is great but pay is low.\nThe work is meaningful but the tools are outdated.";
+      document.getElementById('hypothesis-input').value = "Growth is more important than pay.";
+    }
+  </script>
+</body>
+
+</html>
