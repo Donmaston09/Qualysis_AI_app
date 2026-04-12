@@ -939,6 +939,22 @@
           <input type="text" id="context-input" placeholder="e.g. Q3 employee review..." />
         </div>
 
+        <div>
+          <div class="panel-label">AI Settings</div>
+          <div class="field-group">
+            <label>Provider</label>
+            <select id="ai-provider">
+              <option value="google">Google Gemini</option>
+              <option value="anthropic">Anthropic Claude</option>
+              <option value="openai">OpenAI (GPT-4)</option>
+            </select>
+          </div>
+          <div class="field-group" style="margin-top:0.6rem;">
+            <label>API Key (Required)</label>
+            <input type="password" id="api-key" placeholder="Enter API Key from your provider" style="width: 100%; border: 1px solid var(--border); border-radius: var(--rs); padding: 0.6rem 0.75rem; font-family: var(--sans); font-size: 0.82rem;" />
+          </div>
+        </div>
+
         <button class="run-btn" id="run-btn" onclick="runAnalysis()">
           <span id="run-label">Run analysis</span>
         </button>
@@ -1053,13 +1069,22 @@
       document.getElementById('error-banner').style.display = 'none';
 
       try {
+        const provider = document.getElementById('ai-provider').value;
+        const apiKey = document.getElementById('api-key').value.trim();
+        
+        if (!apiKey) {
+           return alert('Please provide your API key to run the analysis.');
+        }
+
         const res = await fetch('/api/analyse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             data,
             hypothesis: document.getElementById('hypothesis-input').value.trim(),
-            context: document.getElementById('context-input').value.trim()
+            context: document.getElementById('context-input').value.trim(),
+            provider,
+            apiKey
           })
         });
         const result = await res.json();

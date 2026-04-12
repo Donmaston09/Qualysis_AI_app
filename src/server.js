@@ -7,15 +7,15 @@ import { fileURLToPath } from "url";
 import { parse } from "csv-parse/sync";
 import * as XLSX from "xlsx";
 import mammoth from "mammoth";
+import OpenAI from "openai";
 import "dotenv/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── 1. INITIALIZE CLIENTS ───────────────────────────────────────────────────
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const googleAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+// ── 1. INITIALIZE CLIENTS (Moved to request scope) ──────────────────────────
+// Clients are now initialized per-request to support user-provided API keys.
 
 // ── 2. MIDDLEWARE ───────────────────────────────────────────────────────────
 const upload = multer({
@@ -67,7 +67,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 });
 
 app.post("/api/analyse", async (req, res) => {
-  const { data, provider = "google", hypothesis, context } = req.body;
+  const { data, provider = "google", apiKey, hypothesis, context } = req.body;
   if (!data) return res.status(400).json({ error: "No data provided" });
 
   const systemPrompt = `You are a Senior Qualitative Data Scientist. Return ONLY valid JSON.
@@ -83,11 +83,31 @@ app.post("/api/analyse", async (req, res) => {
 
   try {
     let resultText;
+    
+    // Fallback to env vars if users bypass UI check
+    const actualKey = apiKey || process.env[provider === 'google' ? 'GOOGLE_API_KEY' : provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY'];
+    if (!actualKey) {
+      return res.status(400).json({ error: "No API key provided for the selected provider." });
+    }
+
     if (provider === "google") {
+      const googleAI = new GoogleGenerativeAI(actualKey);
       const model = googleAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
       const result = await model.generateContent([systemPrompt, userPrompt]);
       resultText = result.response.text();
+    } else if (provider === "openai") {
+      const openai = new OpenAI({ apiKey: actualKey });
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" }
+      });
+      resultText = completion.choices[0].message.content;
     } else {
+      const anthropic = new Anthropic({ apiKey: actualKey });
       const message = await anthropic.messages.create({
         model: "claude-3-5-sonnet-20240620",
         max_tokens: 4000,
