@@ -10,6 +10,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap"
     rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     *,
     *::before,
@@ -958,7 +960,11 @@
         <button class="run-btn" id="run-btn" onclick="runAnalysis()">
           <span id="run-label">Run analysis</span>
         </button>
-        <button class="example-btn" onclick="loadExample()">Load example dataset</button>
+        <button class="run-btn" id="download-btn" onclick="downloadWordReport()" style="margin-top:0.6rem; background: var(--surface); color: var(--ink); border: 1px solid var(--border); display:none;">
+          <span>Download MS Word Report</span>
+        </button>
+        <button class="example-btn" onclick="loadExample()" style="margin-top:0.6rem;">Load example dataset</button>
+
       </div>
 
       <div class="main">
@@ -983,6 +989,9 @@
           </div>
           <div id="error-banner" class="error-banner" style="display:none;"></div>
           <div id="results-container" style="display:none;">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+               <button class="chip active" onclick="downloadWordReport()" style="background:var(--accent); color: white; border:none;">Download report (.docx)</button>
+            </div>
             <div class="tab-content active" id="tab-overview"></div>
             <div class="tab-content" id="tab-themes"></div>
             <div class="tab-content" id="tab-sentiment"></div>
@@ -990,6 +999,7 @@
             <div class="tab-content" id="tab-anomalies"></div>
             <div class="tab-content" id="tab-recommendations"></div>
           </div>
+
         </div>
       </div>
     </div>
@@ -1001,6 +1011,9 @@
     let uploadedFilename = '';
 
     const COLORS = ['#c4500a', '#2d6a4f', '#1a4a8a', '#8b1a8b', '#8b5a00', '#1a5a8b', '#6a2d2d'];
+    let currentAnalysis = null;
+    let themeChart = null;
+
 
     function setInputMode(mode) {
       inputMode = mode;
@@ -1099,9 +1112,10 @@
     }
 
     function renderResults(r) {
+      currentAnalysis = r;
       document.getElementById('results-container').style.display = 'block';
+      document.getElementById('download-btn').style.display = 'block';
 
-      // SAFE RECOVERY: Ensure core objects exist
       const meta = r.meta || {};
       const themes = Array.isArray(r.themes) ? r.themes : [];
       const sentiment = r.sentiment || {};
@@ -1111,49 +1125,84 @@
       // 1. Overview
       document.getElementById('tab-overview').innerHTML = `
       ${meta.hypothesis ? `
-        <div class="verdict-banner verdict-${vc}" style="margin-bottom:1.2rem;">
+        <div class="verdict-banner verdict-${vc}" style="margin-bottom:1.5rem;">
           <span class="verdict-badge">${meta.verdictLabel || 'ANALYSIS'}</span>
           <div>
             <div class="verdict-text">"${meta.hypothesis}"</div>
             <div style="font-size:0.72rem;color:var(--ink3);margin-top:5px;">Confidence: ${meta.confidenceLevel || 'N/A'}</div>
           </div>
         </div>` : ''}
-      <div class="meta-row">
-        <span class="meta-chip">${meta.responseCount ?? 0} responses</span>
-        <span class="meta-chip">${meta.dataType ?? 'qualitative'}</span>
-      </div>
-      <div class="result-card" style="margin-bottom:1.2rem;">
-        <div class="result-card-header"><div class="rch-title">The story the data tells</div></div>
-        <div class="result-card-body" style="font-family:var(--serif);font-size:0.95rem;font-style:italic;">${meta.storySummary || 'No summary available.'}</div>
-      </div>
-      <div class="section-title">Theme frequency</div>
-      ${themes.map((t, i) => `
-        <div class="theme-row">
-          <div class="theme-bar-wrap">
-            <div class="theme-name">${t.name || 'Theme'}</div>
-            <div class="theme-bar-bg"><div class="theme-bar-fill" style="width:${t.pct ?? 0}%;background:${COLORS[i % COLORS.length]};"></div></div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; margin-bottom: 2rem;">
+        <div>
+          <div class="section-title">The story the data tells</div>
+          <div class="result-card-body" style="font-family:var(--serif); font-size:1.05rem; line-height:1.7; color:var(--ink); background:white; border-radius:var(--r); border:1px solid var(--border); padding:1.5rem;">
+            ${(meta.storySummary || 'No summary available.').split('\n').map(p => `<p style="margin-bottom:1rem;">${p}</p>`).join('')}
           </div>
-          <div class="theme-pct">${Math.round(t.pct ?? 0)}%</div>
-        </div>`).join('')}`;
+        </div>
+        <div>
+          <div class="section-title">Theme distribution</div>
+          <div style="background:white; border-radius:var(--r); border:1px solid var(--border); padding:1rem; height: 300px;">
+            <canvas id="themeChart"></canvas>
+          </div>
+        </div>
+      </div>
 
-      // 2. Themes
+      <div class="section-title">Supporting Themes</div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+        ${themes.slice(0, 3).map((t, i) => `
+          <div class="result-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="result-card-header">
+              <div class="rch-title">${t.name} <span style="font-weight:400; color:var(--ink3);">${Math.round(t.pct)}%</span></div>
+            </div>
+            <div class="result-card-body">
+              <p style="font-size:0.8rem; margin-bottom:0.8rem;">${t.description || ''}</p>
+              ${t.quotations && t.quotations[0] ? `<div class="quote-block" style="font-size:0.75rem;">"${t.quotations[0]}"</div>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      `;
+
+      // Render Themes Chart
+      setTimeout(() => {
+        if (themeChart) themeChart.destroy();
+        const ctx = document.getElementById('themeChart').getContext('2d');
+        themeChart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: themes.map(t => t.name),
+            datasets: [{
+              data: themes.map(t => t.pct),
+              backgroundColor: COLORS,
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+            }
+          }
+        });
+      }, 0);
+
+      // 2. Themes (Detailed)
       document.getElementById('tab-themes').innerHTML = themes.map((t, i) => `
-      <div class="result-card" style="margin-bottom:1rem;">
+      <div class="result-card" style="margin-bottom:1.5rem;">
         <div class="result-card-header">
-          <div class="rch-title">${t.name || 'Theme'} <span style="font-weight:400;color:var(--ink3);margin-left:6px;">${Math.round(t.pct ?? 0)}%</span></div>
+          <div class="rch-title" style="font-size:1.1rem;">${t.name || 'Theme'} <span style="font-weight:400;color:var(--ink3);margin-left:6px;">${Math.round(t.pct ?? 0)}%</span></div>
         </div>
         <div class="result-card-body">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-            <div style="background:var(--surface);padding:0.65rem;border-radius:var(--rs);">
-              <div style="font-size:0.65rem;font-weight:700;color:var(--ink3);">WHAT</div>
-              <div>${t.what || 'Insight provided.'}</div>
-            </div>
-            <div style="background:var(--surface);padding:0.65rem;border-radius:var(--rs);">
-              <div style="font-size:0.65rem;font-weight:700;color:var(--accent);">WHY</div>
-              <div>${t.why || 'Driver provided.'}</div>
-            </div>
+          <div style="background:var(--surface); padding:1rem; border-radius:var(--rs); margin-bottom:1rem;">
+            <div style="font-size:0.65rem; font-weight:700; color:var(--ink3); letter-spacing:0.05em; margin-bottom:0.5rem;">ANALYSIS & DRIVERS</div>
+            <div style="font-size:0.95rem; color:var(--ink); line-height:1.6;">${t.description || ''}</div>
+            <div style="margin-top:0.8rem; font-size:0.85rem;"><strong>Drivers:</strong> ${t.why || ''}</div>
           </div>
-          ${t.evidence ? `<div class="quote-block">${t.evidence}</div>` : ''}
+          
+          <div style="font-size:0.65rem; font-weight:700; color:var(--accent); letter-spacing:0.05em; margin-bottom:0.5rem;">VOICE OF THE PARTICIPANT</div>
+          ${(t.quotations || []).map(q => `<div class="quote-block" style="margin-bottom:0.5rem; border-left:3px solid var(--accent);">"${q}"</div>`).join('')}
         </div>
       </div>`).join('');
 
@@ -1163,15 +1212,15 @@
         <div class="sent-card sent-pos"><div class="sent-label">Positive</div><div class="sent-pct">${Math.round(sentiment.positive?.pct ?? 0)}%</div></div>
         <div class="sent-card sent-neg"><div class="sent-label">Negative</div><div class="sent-pct">${Math.round(sentiment.negative?.pct ?? 0)}%</div></div>
         <div class="sent-card sent-neu"><div class="sent-label">Neutral</div><div class="sent-pct">${Math.round(sentiment.neutral?.pct ?? 0)}%</div></div>
-        <div class="sent-card sent-amb"><div class="sent-label">Mixed</div><div class="sent-pct">${Math.round(sentiment.ambivalent?.pct ?? 0)}%</div></div>
+        <div class="sent-card sent-amb"><div class="sent-label">Mixed/Ambivalent</div><div class="sent-pct">${Math.round(sentiment.ambivalent?.pct ?? 0)}%</div></div>
       </div>`;
 
       // 4. Hypothesis
       document.getElementById('tab-hypothesis').innerHTML = `
       <div class="result-card">
         <div class="result-card-body">
-          <div style="margin-bottom:1rem;"><strong>Verdict:</strong> ${hyp.verdict || 'No verdict available.'}</div>
-          <div style="font-size:0.85rem;color:var(--ink2);line-height:1.7;">${hyp.nuance || ''}</div>
+          <div style="margin-bottom:1rem; font-size:1.1rem;"><strong>Verdict:</strong> ${hyp.verdict || 'No verdict available.'}</div>
+          <div style="font-size:0.95rem;color:var(--ink2);line-height:1.7;">${hyp.nuance || ''}</div>
         </div>
       </div>`;
 
@@ -1190,6 +1239,41 @@
 
       switchTab('overview');
     }
+
+    async function downloadWordReport() {
+      if (!currentAnalysis) return alert('No analysis to export');
+      
+      const btn = document.getElementById('download-btn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = 'Generating...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/api/export-docx', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentAnalysis)
+        });
+
+        if (!response.ok) throw new Error('Failed to generate report');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Qualysis_Report_${new Date().getTime()}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } catch (err) {
+        alert('Error downloading report: ' + err.message);
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
 
     function loadExample() {
       setInputMode('paste');

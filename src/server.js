@@ -9,6 +9,20 @@ import * as XLSX from "xlsx";
 import mammoth from "mammoth";
 import OpenAI from "openai";
 import "dotenv/config";
+import { 
+  Document, 
+  Packer, 
+  Paragraph, 
+  TextRun, 
+  HeadingLevel, 
+  AlignmentType, 
+  BorderStyle,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType
+} from "docx";
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -70,14 +84,38 @@ app.post("/api/analyse", async (req, res) => {
   const { data, provider = "google", apiKey, hypothesis, context } = req.body;
   if (!data) return res.status(400).json({ error: "No data provided" });
 
+
+
   const systemPrompt = `You are a Senior Qualitative Data Scientist. Return ONLY valid JSON.
   Exact Structure Required:
   {
-    "meta": { "responseCount": 0, "verdictLabel": "SUPPORTED", "verdictClass": "supported", "confidenceLevel": "High", "storySummary": "" },
-    "themes": [{ "name": "", "pct": 0, "sentiment": "neutral", "evidence": "", "why": "" }],
-    "sentiment": { "positive": { "pct": 0 }, "negative": { "pct": 0 }, "neutral": { "pct": 0 } },
-    "recommendations": [{ "title": "", "action": "" }]
+    "meta": { 
+      "responseCount": 0, 
+      "verdictLabel": "SUPPORTED", 
+      "verdictClass": "supported", 
+      "confidenceLevel": "High", 
+      "storySummary": "A comprehensive 3-5 paragraph narrative telling the story of the data, highlighting key tensions, drivers, and implications. Be detailed and academic yet accessible." 
+    },
+    "themes": [
+      { 
+        "name": "Theme Name", 
+        "pct": 0, 
+        "sentiment": "neutral", 
+        "description": "Comprehensive explanation of this theme (2-3 sentences), what it represents in the data, and why it matters.", 
+        "why": "The underlying driver or cause.", 
+        "quotations": ["At least 2-3 direct quotations from the data that illustrate this theme."] 
+      }
+    ],
+    "sentiment": { 
+      "positive": { "pct": 0 }, 
+      "negative": { "pct": 0 }, 
+      "neutral": { "pct": 0 },
+      "ambivalent": { "pct": 0 }
+    },
+    "recommendations": [{ "title": "", "action": "" }],
+    "anomalies": [{ "finding": "", "significance": "" }]
   }`;
+
 
   const userPrompt = `Context: ${context || "N/A"}\nHypothesis: ${hypothesis || "N/A"}\nDATASET:\n${data}`;
 
@@ -130,7 +168,7 @@ app.post("/api/analyse", async (req, res) => {
 
     // 2. Normalize Sentiment (Fixes 'pct' error)
     if (!finalData.sentiment) finalData.sentiment = {};
-    ['positive', 'negative', 'neutral'].forEach(key => {
+    ['positive', 'negative', 'neutral', 'ambivalent'].forEach(key => {
       if (!finalData.sentiment[key]) finalData.sentiment[key] = { pct: 0 };
       if (typeof finalData.sentiment[key].pct !== 'number') finalData.sentiment[key].pct = 0;
     });
@@ -141,9 +179,14 @@ app.post("/api/analyse", async (req, res) => {
       name: t.name || "General Insight",
       pct: typeof t.pct === 'number' ? t.pct : 0,
       sentiment: t.sentiment || "neutral",
-      evidence: t.evidence || "",
-      why: t.why || ""
+      description: t.description || "",
+      why: t.why || "",
+      quotations: Array.isArray(t.quotations) ? t.quotations : (t.evidence ? [t.evidence] : [])
     }));
+
+    // 4. Normalize Anomalies
+    if (!Array.isArray(finalData.anomalies)) finalData.anomalies = [];
+
 
     res.json(finalData);
 
@@ -152,6 +195,113 @@ app.post("/api/analyse", async (req, res) => {
     res.status(500).json({ error: "Analysis failed. Please check API keys or data format." });
   }
 });
+
+app.post("/api/export-docx", async (req, res) => {
+  try {
+    const { meta, themes, sentiment, recommendations } = req.body;
+
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            text: "Qualysis Analysis Report",
+            heading: HeadingLevel.TITLE,
+            alignment: AlignmentType.CENTER,
+          }),
+          new Paragraph({
+            text: `Generated on ${new Date().toLocaleDateString()}`,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 },
+          }),
+
+          new Paragraph({ text: "1. Executive Summary", heading: HeadingLevel.HEADING_1 }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Hypothesis: ", bold: true }),
+              new TextRun(meta.hypothesis || "N/A"),
+            ],
+            spacing: { before: 200 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Verdict: ", bold: true }),
+              new TextRun({ text: meta.verdictLabel || "N/A", color: meta.verdictClass === 'supported' ? '2d6a4f' : 'c0392b' }),
+            ],
+          }),
+          new Paragraph({
+            text: meta.storySummary || "No summary available.",
+            spacing: { before: 200, after: 400 },
+          }),
+
+          new Paragraph({ text: "2. Key Themes", heading: HeadingLevel.HEADING_1 }),
+          ...themes.flatMap(t => [
+            new Paragraph({
+              text: `${t.name} (${Math.round(t.pct)}%)`,
+              heading: HeadingLevel.HEADING_2,
+              spacing: { before: 300 },
+            }),
+            new Paragraph({ text: t.description }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: "Why: ", bold: true }),
+                new TextRun(t.why),
+              ],
+            }),
+            ...(t.quotations || []).map(q => new Paragraph({
+              text: `"${q}"`,
+              italics: true,
+              indent: { left: 720 },
+              spacing: { before: 100 },
+            }))
+          ]),
+
+          new Paragraph({ text: "3. Sentiment Analysis", heading: HeadingLevel.HEADING_1, spacing: { before: 400 } }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph("Positive")] }),
+                  new TableCell({ children: [new Paragraph("Negative")] }),
+                  new TableCell({ children: [new Paragraph("Neutral")] }),
+                  new TableCell({ children: [new Paragraph("Ambivalent")] }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph(`${Math.round(sentiment.positive?.pct || 0)}%`)] }),
+                  new TableCell({ children: [new Paragraph(`${Math.round(sentiment.negative?.pct || 0)}%`)] }),
+                  new TableCell({ children: [new Paragraph(`${Math.round(sentiment.neutral?.pct || 0)}%`)] }),
+                  new TableCell({ children: [new Paragraph(`${Math.round(sentiment.ambivalent?.pct || 0)}%`)] }),
+                ],
+              }),
+            ],
+          }),
+
+          new Paragraph({ text: "4. Recommendations", heading: HeadingLevel.HEADING_1, spacing: { before: 400 } }),
+          ...(recommendations || []).map((rec, i) => new Paragraph({
+            children: [
+              new TextRun({ text: `${i + 1}. ${rec.title}: `, bold: true }),
+              new TextRun(rec.action),
+            ],
+            spacing: { before: 100 },
+          })),
+        ],
+      }],
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", "attachment; filename=Qualysis_Report.docx");
+    res.send(buffer);
+
+  } catch (err) {
+    console.error("Export Error:", err);
+    res.status(500).json({ error: "Failed to generate Word document." });
+  }
+});
+
 
 app.get("*", (req, res) => res.sendFile(path.join(__dirname, "../public/index.html")));
 

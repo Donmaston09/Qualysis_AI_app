@@ -8,6 +8,8 @@ services:
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false          # You'll paste this in the Render dashboard
+      - key: GOOGLE_API_KEY
+        sync: false          # You'll paste this in the Render dashboard
       - key: NODE_ENV
         value: production
     healthCheckPath: /
